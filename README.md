@@ -26,56 +26,37 @@ Laravel の入門資料（[参考資料](https://iloveudemy.banana-quantum.com/b
 
 ### 前提条件
 
-以下がインストールされていること：
-
 - PHP 8.3
 - Composer 2.x
 
-> **注意（このリポジトリ固有の事情）**
-> このシステムには `php8.3-xml` と `php8.3-sqlite3` パッケージが未インストールです。
-> `php-ext.sh` スクリプトがその回避策として機能します。
-> 通常の環境では `sudo apt-get install php8.3-xml php8.3-sqlite3` で解決します。
+> **このリポジトリ固有の事情**
+> `php8.3-xml` と `php8.3-sqlite3` が未インストールのため、`setup.sh` が自動で回避策を適用します。
+> 通常の環境では `sudo apt-get install php8.3-xml php8.3-sqlite3` のみで済みます。
 
-### セットアップ手順
+### セットアップ（1コマンド）
 
 ```bash
-# 1. リポジトリをクローン
+# リポジトリをクローン
 git clone <リポジトリURL>
 cd Todo-App-Practice-Laravel
 
-# 2. PHP拡張のセットアップ（このシステム固有の手順）
-mkdir -p /tmp/php-ext
-cd /tmp
-apt-get download php8.3-xml php8.3-sqlite3
-dpkg --extract php8.3-xml_*.deb /tmp/php-ext
-dpkg --extract php8.3-sqlite3_*.deb /tmp/php-ext
-cd -
+# セットアップを実行（PHP拡張・composer install・DB作成・マイグレーション・シーダーを一括処理）
+./setup.sh
+```
 
-# システムiniをベースにカスタムphp.iniを生成
-mkdir -p /home/ogawa/.php
-cp /etc/php/8.3/cli/php.ini /home/ogawa/.php/php.ini
-for f in /etc/php/8.3/cli/conf.d/*.ini; do cat "$f" >> /home/ogawa/.php/php.ini; done
-cat >> /home/ogawa/.php/php.ini << 'EOF'
-extension=/tmp/php-ext/usr/lib/php/20230831/xml.so
-extension=/tmp/php-ext/usr/lib/php/20230831/dom.so
-extension=/tmp/php-ext/usr/lib/php/20230831/simplexml.so
-extension=/tmp/php-ext/usr/lib/php/20230831/sqlite3.so
-extension=/tmp/php-ext/usr/lib/php/20230831/pdo_sqlite.so
-EOF
+完了後、以下のメッセージが表示されます：
 
-# 3. Composerパッケージをインストール
-PHPRC=/home/ogawa/.php PHP_INI_SCAN_DIR="" composer install
+```
+============================================
+  セットアップが完了しました！
+============================================
 
-# 4. .envを設定
-cp .env.example .env
-./php-ext.sh artisan key:generate
+テストアカウント:
+  Email   : test@example.com
+  Password: password123
 
-# 5. DBを作成してマイグレーションを実行
-touch database/database.sqlite
-./php-ext.sh artisan migrate
-
-# 6. テストデータを投入（任意）
-./php-ext.sh artisan db:seed
+サーバーを起動するには:
+  ./php-ext.sh artisan serve --host=0.0.0.0 --port=8000
 ```
 
 ### 開発サーバーの起動
@@ -86,7 +67,18 @@ touch database/database.sqlite
 
 ブラウザで http://localhost:8000 にアクセス
 
-### テストアカウント（シーダー実行後）
+### setup.sh のオプション
+
+| コマンド | 説明 |
+|---|---|
+| `./setup.sh` | 初回セットアップ（既存データは保持） |
+| `./setup.sh --fresh` | DBをリセットしてテストデータを再投入 |
+| `./setup.sh --ext` | PHP拡張だけ再インストール（PC再起動後に使用） |
+
+> **PC再起動後の注意**
+> `/tmp` は再起動で消えるため、`./setup.sh --ext` を実行してPHP拡張を復元してください。
+
+### テストアカウント
 
 | 項目 | 値 |
 |---|---|
@@ -174,11 +166,11 @@ git flow feature start initial-laravel-setup
 # Laravelプロジェクトを作成
 composer create-project laravel/laravel . --prefer-dist
 
-# .env を設定（SQLite・fileセッション）
-cp .env.example .env
+# セットアップスクリプトを実行（PHP拡張・.env・DB・シーダーを一括処理）
+./setup.sh
 ```
 
-`.env` の変更箇所：
+`.env` の変更箇所（setup.sh 実行後に確認）：
 ```env
 APP_NAME="Todo App"
 APP_URL=http://localhost:8000
@@ -190,13 +182,7 @@ CACHE_STORE=file
 ```
 
 ```bash
-# アプリケーションキーを生成
-./php-ext.sh artisan key:generate
-
-# SQLiteのDBファイルを作成
-touch database/database.sqlite
-
-git add .env.example .env php-ext.sh
+git add .env.example .env php-ext.sh setup.sh
 git commit -m "feat: Laravelプロジェクトの初期設定（SQLite・日本語ロケール）"
 
 git flow feature finish initial-laravel-setup
